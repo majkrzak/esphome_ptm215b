@@ -1,10 +1,7 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import esp32_ble_tracker, binary_sensor
-from esphome.const import (
-    CONF_MAC_ADDRESS,
-    CONF_ID,
-)
+from esphome.const import CONF_MAC_ADDRESS, CONF_ID, CONF_KEY
 
 CODEOWNERS = ["@majkrzak"]
 DEPENDENCIES = ["esp32_ble_tracker"]
@@ -19,6 +16,7 @@ CONFIG_SCHEMA = (
         {
             cv.GenerateID(): cv.declare_id(PTM215B),
             cv.Required(CONF_MAC_ADDRESS): cv.mac_address,
+            cv.Optional(CONF_KEY): cv.hex_int,
             cv.Optional("bar"): binary_sensor.binary_sensor_schema(),
             cv.Optional("a0"): binary_sensor.binary_sensor_schema(),
             cv.Optional("a1"): binary_sensor.binary_sensor_schema(),
@@ -45,6 +43,17 @@ async def to_code(config):
     }
 
     cg.add(var.set_address(config[CONF_MAC_ADDRESS].as_hex))
+
+    if CONF_KEY in config:
+        cg.add(
+            var.set_key(
+                cg.MockObj(
+                    "{"
+                    + ",".join(map(str, config[CONF_KEY].to_bytes(16, "big")))
+                    + "}"
+                )
+            )
+        )
 
     for key, value in mapping.items():
         if key in config:

@@ -1,9 +1,10 @@
+#ifdef USE_ESP32
+
 #include "ptm215b.h"
 #include "esphome/core/log.h"
 
 #include <sstream>
-
-#ifdef USE_ESP32
+#include "mbedtls/ccm.h"
 
 namespace esphome {
 namespace ptm215b {
