@@ -24,19 +24,21 @@ template<class T> std::string to_string(const T &bytes) {
   return ss.str();
 }
 
+std::string to_string(const PTM215B::switch_status_t &switch_status) {
+  std::stringstream ss;
+  ss << (switch_status.press ? "Press" : "Release");
+  ss << (switch_status.A0 ? " A0" : "");
+  ss << (switch_status.A1 ? " A1" : "");
+  ss << (switch_status.B0 ? " B0" : "");
+  ss << (switch_status.B1 ? " B1" : "");
+  return ss.str();
+}
+
 union {
   struct __packed {
     uint32_t sequence_counter;
-    PTM215B::state switch_status;
+    PTM215B::switch_status_t switch_status;
     uint32_t security_signature;
-
-    std::string to_string() const {
-      std::stringstream ss;
-      ss << "Data Telegram: ";
-      ss << "sequence_counter: " << sequence_counter << " ";
-      ss << "switch_status: " << switch_status.to_string() << "";
-      return ss.str();
-    }
   } f;
   std::array<uint8_t, 9> b;
 } data_telegram;
@@ -111,7 +113,7 @@ bool PTM215B::handle_data(const data_t &data) {
         uint8_t type;
         uint16_t manufacturer;
         uint32_t sequence_counter;
-        PTM215B::state state;
+        switch_status_t state;
       } fields;
       std::array<uint8_t, 9> buff;
     } payload{{0x0C, 0xFF, 0x03DA, data_telegram.f.sequence_counter, data_telegram.f.switch_status}};
@@ -144,10 +146,10 @@ bool PTM215B::handle_data(const data_t &data) {
   return false;
 }
 
-void PTM215B::update_state(state new_state) {
+void PTM215B::update_state(switch_status_t new_state) {
   state_ = new_state;
 
-  ESP_LOGI(TAG, "%s: %s", to_string(address_).c_str(), state_.to_string().c_str());
+  ESP_LOGI(TAG, "%s: %s", to_string(address_).c_str(), to_string(state_).c_str());
 
   if (bar_sensor_) {
     bar_sensor_->publish_state(state_.press);
@@ -166,15 +168,6 @@ void PTM215B::update_state(state new_state) {
   }
 }
 
-std::string PTM215B::state::to_string() const {
-  std::stringstream ss;
-  ss << (press ? "Press" : "Release");
-  ss << (A0 ? " A0" : "");
-  ss << (A1 ? " A1" : "");
-  ss << (B0 ? " B0" : "");
-  ss << (B1 ? " B1" : "");
-  return ss.str();
-}
 }  // namespace ptm215b
 }  // namespace esphome
 

@@ -2,6 +2,7 @@
 
 #ifdef USE_ESP32
 
+#include "esphome/core/datatypes.h"
 #include "esphome/core/component.h"
 #include "esphome/components/esp32_ble_tracker/esp32_ble_tracker.h"
 #include "esphome/components/binary_sensor/binary_sensor.h"
@@ -15,16 +16,22 @@ class PTM215B : public Component, public esp32_ble_tracker::ESPBTDeviceListener 
   typedef std::array<uint8_t, 16> key_t;
   typedef esp32_ble_tracker::ESPBTUUID manufacturer_t;
   typedef std::vector<uint8_t> data_t;
+  typedef uint32_le_t sequence_counter_t;
+  typedef std::array<uint8_t, 4> security_signature_t;
 
-  struct state {
+  typedef struct __packed {
     bool press : 1;
     bool A0 : 1;
     bool A1 : 1;
     bool B0 : 1;
     bool B1 : 1;
+  } switch_status_t;
 
-    std::string to_string() const;
-  };
+  struct __packed {
+    sequence_counter_t sequence_counter;
+    switch_status_t switch_status;
+    security_signature_t security_signature;
+  } data_telegram_t;
 
  public:
   void set_address(const address_t &&address) { address_ = address; }
@@ -39,7 +46,7 @@ class PTM215B : public Component, public esp32_ble_tracker::ESPBTDeviceListener 
   bool parse_device(const esp32_ble_tracker::ESPBTDevice &device) override;
 
  public:
-  state get_state() const { return state_; };
+  const switch_status_t get_state() const { return state_; };
 
  protected:
   address_t address_{};
@@ -52,14 +59,17 @@ class PTM215B : public Component, public esp32_ble_tracker::ESPBTDeviceListener 
   binary_sensor::BinarySensor *b1_sensor_{nullptr};
 
  private:
-  struct state state_ {};
+  switch_status_t state_{};
   uint32_t last_sequence_{0};
 
  private:
   bool check_address(const address_t &address);
   bool check_manufacturer(const manufacturer_t &manufacturer);
   bool handle_data(const data_t &data);
-  void update_state(state new_state);
+  // bool handle_data_telegram();
+  // bool handle_commissioning_telegram();
+  bool check_signature();
+  void update_state(switch_status_t new_state);
 };
 
 }  // namespace ptm215b
