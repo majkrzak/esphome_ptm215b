@@ -11,6 +11,17 @@ namespace ptm215b {
 
 class PTM215B : public Component, public esp32_ble_tracker::ESPBTDeviceListener {
  public:
+  struct state {
+    bool press : 1;
+    bool A0 : 1;
+    bool A1 : 1;
+    bool B0 : 1;
+    bool B1 : 1;
+
+    std::string to_string() const;
+  };
+
+ public:
   void set_address(uint64_t address) { address_ = address; }
   void set_key(const std::array<uint8_t, 16> &&key) { key_ = key; }
   void set_bar_sensor(binary_sensor::BinarySensor *sensor) { this->bar_sensor_ = sensor; }
@@ -20,6 +31,9 @@ class PTM215B : public Component, public esp32_ble_tracker::ESPBTDeviceListener 
   void set_b1_sensor(binary_sensor::BinarySensor *sensor) { this->b1_sensor_ = sensor; }
 
   bool parse_device(const esp32_ble_tracker::ESPBTDevice &device) override;
+
+ public:
+  state get_state() const { return state_; };
 
  protected:
   uint64_t address_{0};
@@ -32,6 +46,7 @@ class PTM215B : public Component, public esp32_ble_tracker::ESPBTDeviceListener 
   binary_sensor::BinarySensor *b1_sensor_{nullptr};
 
  private:
+  struct state state_ {};
   uint32_t last_sequence_{0};
 };
 

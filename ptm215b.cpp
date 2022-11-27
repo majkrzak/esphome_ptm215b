@@ -9,28 +9,12 @@
 namespace esphome {
 namespace ptm215b {
 
-struct switch_status {
-  bool press : 1;
-  bool A0 : 1;
-  bool A1 : 1;
-  bool B0 : 1;
-  bool B1 : 1;
-
-  std::string to_string() const {
-    std::stringstream ss;
-    ss << (press ? "Press" : "Release");
-    ss << (A0 ? " A0" : "");
-    ss << (A1 ? " A1" : "");
-    ss << (B0 ? " B0" : "");
-    ss << (B1 ? " B1" : "");
-    return ss.str();
-  }
-};
+namespace {
 
 union {
   struct __packed {
     uint32_t sequence_counter;
-    struct switch_status switch_status;
+    PTM215B::state switch_status;
     uint32_t security_signature;
 
     std::string to_string() const {
@@ -46,6 +30,7 @@ union {
 
 static const char *const TAG = "ptm215b";
 static const esp32_ble_tracker::ESPBTUUID manufacturer_id = esp32_ble_tracker::ESPBTUUID::from_uint16(0x03DA);
+}  // namespace
 
 bool PTM215B::parse_device(const esp32_ble_tracker::ESPBTDevice &device) {
   if (device.address_uint64() != this->address_) {
@@ -113,7 +98,7 @@ bool PTM215B::parse_device(const esp32_ble_tracker::ESPBTDevice &device) {
           uint8_t type;
           uint16_t manufacturer;
           uint32_t sequence_counter;
-          struct switch_status state;
+          PTM215B::state state;
         } fields;
         std::array<uint8_t, 9> buff;
       } payload{{0x0C, 0xFF, 0x03DA, data_telegram.f.sequence_counter, data_telegram.f.switch_status}};
@@ -175,6 +160,16 @@ bool PTM215B::parse_device(const esp32_ble_tracker::ESPBTDevice &device) {
   }
 
   return true;
+}
+
+std::string PTM215B::state::to_string() const {
+  std::stringstream ss;
+  ss << (press ? "Press" : "Release");
+  ss << (A0 ? " A0" : "");
+  ss << (A1 ? " A1" : "");
+  ss << (B0 ? " B0" : "");
+  ss << (B1 ? " B1" : "");
+  return ss.str();
 }
 }  // namespace ptm215b
 }  // namespace esphome
