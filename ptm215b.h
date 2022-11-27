@@ -13,6 +13,7 @@ class PTM215B : public Component, public esp32_ble_tracker::ESPBTDeviceListener 
  public:
   typedef std::array<uint8_t, 6> address_t;
   typedef std::array<uint8_t, 16> key_t;
+  typedef esp32_ble_tracker::ESPBTUUID manufacturer_t;
 
   struct state {
     bool press : 1;
@@ -55,6 +56,7 @@ class PTM215B : public Component, public esp32_ble_tracker::ESPBTDeviceListener 
 
  private:
   bool check_address(const address_t &address);
+  bool check_manufacturer(const manufacturer_t &manufacturer);
   void update_state(state new_state);
 };
 

@@ -42,7 +42,6 @@ union {
 } data_telegram;
 
 static const char *const TAG = "ptm215b";
-static const esp32_ble_tracker::ESPBTUUID manufacturer_id = esp32_ble_tracker::ESPBTUUID::from_uint16(0x03DA);
 }  // namespace
 
 bool PTM215B::parse_device(const esp32_ble_tracker::ESPBTDevice &device) {
@@ -51,9 +50,7 @@ bool PTM215B::parse_device(const esp32_ble_tracker::ESPBTDevice &device) {
   }
 
   for (auto &manufacturer_data : device.get_manufacturer_datas()) {
-    if (manufacturer_data.uuid != manufacturer_id) {
-      ESP_LOGE(TAG, "%s: Unknow Manufacturer ID %s, %s required.", device.address_str().c_str(),
-               manufacturer_data.uuid.to_string().c_str(), manufacturer_id.to_string().c_str());
+    if (!check_manufacturer(manufacturer_data.uuid)) {
       continue;
     }
 
@@ -157,6 +154,14 @@ bool PTM215B::parse_device(const esp32_ble_tracker::ESPBTDevice &device) {
 
 bool PTM215B::check_address(const address_t &address) {
   if (address == address_) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+bool PTM215B::check_manufacturer(const manufacturer_t &manufacturer) {
+  if (manufacturer == esp32_ble_tracker::ESPBTUUID::from_uint16(0x03DA)) {
     return true;
   } else {
     return false;
