@@ -140,28 +140,32 @@ bool PTM215B::parse_device(const esp32_ble_tracker::ESPBTDevice &device) {
 
     ESP_LOGI(TAG, "%s: %s", device.address_str().c_str(), data_telegram.f.switch_status.to_string().c_str());
 
-    state_ = data_telegram.f.switch_status;
-
-    if (bar_sensor_) {
-      bar_sensor_->publish_state(state_.press);
-    }
-    if (a0_sensor_) {
-      a0_sensor_->publish_state(state_.A0);
-    }
-    if (a1_sensor_) {
-      a1_sensor_->publish_state(state_.A1);
-    }
-    if (b0_sensor_) {
-      b0_sensor_->publish_state(state_.B0);
-    }
-    if (b1_sensor_) {
-      b1_sensor_->publish_state(state_.B1);
-    }
+    update_state(data_telegram.f.switch_status);
 
     break;
   }
 
   return true;
+}
+
+void PTM215B::update_state(state new_state) {
+  state_ = new_state;
+
+  if (bar_sensor_) {
+    bar_sensor_->publish_state(state_.press);
+  }
+  if (a0_sensor_) {
+    a0_sensor_->publish_state(state_.A0);
+  }
+  if (a1_sensor_) {
+    a1_sensor_->publish_state(state_.A1);
+  }
+  if (b0_sensor_) {
+    b0_sensor_->publish_state(state_.B0);
+  }
+  if (b1_sensor_) {
+    b1_sensor_->publish_state(state_.B1);
+  }
 }
 
 std::string PTM215B::state::to_string() const {

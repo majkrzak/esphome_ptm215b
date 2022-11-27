@@ -48,6 +48,9 @@ class PTM215B : public Component, public esp32_ble_tracker::ESPBTDeviceListener 
  private:
   struct state state_ {};
   uint32_t last_sequence_{0};
+
+ private:
+  void update_state(state new_state);
 };
 
 }  // namespace ptm215b
