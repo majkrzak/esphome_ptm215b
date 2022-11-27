@@ -54,102 +54,10 @@ bool PTM215B::parse_device(const esp32_ble_tracker::ESPBTDevice &device) {
       continue;
     }
 
-    if (manufacturer_data.data.size() == 26) {
-      ESP_LOGE(TAG, "%s: Radio-based commissioning in progress. Make `Any Other Button Action` to exit.",
-               device.address_str().c_str());
-      continue;
-    }
-
-    if (manufacturer_data.data.size() != 9) {
-      ESP_LOGE(TAG, "%s: Invalid length. Optional data fileds are not supported.", device.address_str().c_str());
-      continue;
-    }
-
-    ESP_LOGD(TAG, "%s: Manufacturer data: %s %s", device.address_str().c_str(),
-             manufacturer_data.uuid.to_string().c_str(), format_hex_pretty(manufacturer_data.data).c_str());
-
-    std::copy_n(manufacturer_data.data.begin(), 9, data_telegram.b.begin());
-
-    ESP_LOGD(TAG, "%s: %s", device.address_str().c_str(), data_telegram.f.to_string().c_str());
-
-    // validate https://siliconlabs.github.io/Gecko_SDK_Doc/mbedtls/html/ccm_8h.html#a464d8e724738b4bbd5b415ca0580f1b1
-    {
-      // {
-      //   address_ = 0xE215000019B8;
-      //   key_ = {0x6c, 0x48, 0x55, 0x07, 0x1a, 0xcd, 0xee, 0x44, 0x86, 0xf3, 0x0a, 0x41, 0xca, 0x20, 0x89, 0xa1};
-      //   data_telegram.b = {0x5D, 0x04, 0x00, 0x00, 0x11, 0xB2, 0xFA, 0x88, 0xFF};
-      // }
-      int ret;
-      mbedtls_ccm_context ctx;
-      mbedtls_ccm_init(&ctx);
-
-      ret = mbedtls_ccm_setkey(&ctx, MBEDTLS_CIPHER_ID_AES, key_.data(), key_.size() * 8);
-
-      ESP_LOGI(TAG, "%s: mbedtls_ccm_setkey: %d", device.address_str().c_str(), ret);
-
-      union {
-        struct __packed {
-          std::array<uint8_t, 6> source_address;
-          uint32_t sequence_counter;
-          std::array<uint8_t, 3> _padding;
-        } fields;
-        std::array<uint8_t, 13> buff;
-      } nonce{{{address_[5], address_[4], address_[3], address_[2], address_[1], address_[0]},
-               data_telegram.f.sequence_counter,
-               {0, 0, 0}}};
-
-      union {
-        struct __packed {
-          uint8_t len;
-          uint8_t type;
-          uint16_t manufacturer;
-          uint32_t sequence_counter;
-          PTM215B::state state;
-        } fields;
-        std::array<uint8_t, 9> buff;
-      } payload{{0x0C, 0xFF, 0x03DA, data_telegram.f.sequence_counter, data_telegram.f.switch_status}};
-
-      union {
-        struct {
-          uint32_t security_signature;
-        } fields;
-        std::array<uint8_t, 4> buff;
-      } tag{{data_telegram.f.security_signature}};
-
-      ESP_LOGD(TAG, "%s: NONCE: %s", device.address_str().c_str(),
-               format_hex_pretty(nonce.buff.data(), nonce.buff.size()).c_str());
-      ESP_LOGD(TAG, "%s: PAYLOAD: %s", device.address_str().c_str(),
-               format_hex_pretty(payload.buff.data(), payload.buff.size()).c_str());
-
-      ret = mbedtls_ccm_auth_decrypt(&ctx, 0, nonce.buff.data(), nonce.buff.size(), payload.buff.data(),
-                                     payload.buff.size(), nullptr, nullptr, tag.buff.data(), tag.buff.size());
-
-      ESP_LOGI(TAG, "%s: DECRYPT: %d", device.address_str().c_str(), ret);
-
-      std::array<uint8_t, 4> buff;
-      ret = mbedtls_ccm_encrypt_and_tag(&ctx, 0, nonce.buff.data(), nonce.buff.size(), payload.buff.data(),
-                                        payload.buff.size(), nullptr, nullptr, buff.data(), buff.size());
-
-      ESP_LOGI(TAG, "%s: ENCRYPT: %d, %s", device.address_str().c_str(), ret,
-               format_hex_pretty(buff.data(), buff.size()).c_str());
-
-      mbedtls_ccm_free(&ctx);
-    }
-
-    if (last_sequence_ == data_telegram.f.sequence_counter) {
-      ESP_LOGD(TAG, "%s: Debouncing sequence %d", device.address_str().c_str(), last_sequence_);
-      continue;
-    } else {
-      last_sequence_ = data_telegram.f.sequence_counter;
-      ESP_LOGD(TAG, "%s: New sequence %d", device.address_str().c_str(), last_sequence_);
-    }
-
-    update_state(data_telegram.f.switch_status);
-
-    break;
+    return handle_data(manufacturer_data.data);
   }
 
-  return true;
+  return false;
 }
 
 bool PTM215B::check_address(const address_t &address) {
@@ -166,6 +74,74 @@ bool PTM215B::check_manufacturer(const manufacturer_t &manufacturer) {
   } else {
     return false;
   }
+}
+
+bool PTM215B::handle_data(const data_t &data) {
+  if (data.size() == 26) {
+    return false;
+  }
+
+  if (data.size() != 9) {
+    return false;
+  }
+
+  std::copy_n(data.begin(), 9, data_telegram.b.begin());
+
+  {
+    int ret;
+    mbedtls_ccm_context ctx;
+    mbedtls_ccm_init(&ctx);
+
+    ret = mbedtls_ccm_setkey(&ctx, MBEDTLS_CIPHER_ID_AES, key_.data(), key_.size() * 8);
+
+    union {
+      struct __packed {
+        std::array<uint8_t, 6> source_address;
+        uint32_t sequence_counter;
+        std::array<uint8_t, 3> _padding;
+      } fields;
+      std::array<uint8_t, 13> buff;
+    } nonce{{{address_[5], address_[4], address_[3], address_[2], address_[1], address_[0]},
+             data_telegram.f.sequence_counter,
+             {0, 0, 0}}};
+
+    union {
+      struct __packed {
+        uint8_t len;
+        uint8_t type;
+        uint16_t manufacturer;
+        uint32_t sequence_counter;
+        PTM215B::state state;
+      } fields;
+      std::array<uint8_t, 9> buff;
+    } payload{{0x0C, 0xFF, 0x03DA, data_telegram.f.sequence_counter, data_telegram.f.switch_status}};
+
+    union {
+      struct {
+        uint32_t security_signature;
+      } fields;
+      std::array<uint8_t, 4> buff;
+    } tag{{data_telegram.f.security_signature}};
+
+    ret = mbedtls_ccm_auth_decrypt(&ctx, 0, nonce.buff.data(), nonce.buff.size(), payload.buff.data(),
+                                   payload.buff.size(), nullptr, nullptr, tag.buff.data(), tag.buff.size());
+
+    std::array<uint8_t, 4> buff;
+    ret = mbedtls_ccm_encrypt_and_tag(&ctx, 0, nonce.buff.data(), nonce.buff.size(), payload.buff.data(),
+                                      payload.buff.size(), nullptr, nullptr, buff.data(), buff.size());
+
+    mbedtls_ccm_free(&ctx);
+  }
+
+  if (last_sequence_ == data_telegram.f.sequence_counter) {
+    return false;
+  } else {
+    last_sequence_ = data_telegram.f.sequence_counter;
+  }
+
+  update_state(data_telegram.f.switch_status);
+
+  return false;
 }
 
 void PTM215B::update_state(state new_state) {
