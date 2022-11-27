@@ -81,16 +81,18 @@ bool PTM215B::parse_device(const esp32_ble_tracker::ESPBTDevice &device) {
 
     // validate https://siliconlabs.github.io/Gecko_SDK_Doc/mbedtls/html/ccm_8h.html#a464d8e724738b4bbd5b415ca0580f1b1
     {
-      {
-        address_ = 0xE215000019B8;
-        key_ = {0x6c, 0x48, 0x55, 0x07, 0x1a, 0xcd, 0xee, 0x44, 0x86, 0xf3, 0x0a, 0x41, 0xca, 0x20, 0x89, 0xa1};
-        data_telegram.b = {0x5D, 0x04, 0x00, 0x00, 0x11, 0xB2, 0xFA, 0x88, 0xFF};
-      }
+      // {
+      //   address_ = 0xE215000019B8;
+      //   key_ = {0x6c, 0x48, 0x55, 0x07, 0x1a, 0xcd, 0xee, 0x44, 0x86, 0xf3, 0x0a, 0x41, 0xca, 0x20, 0x89, 0xa1};
+      //   data_telegram.b = {0x5D, 0x04, 0x00, 0x00, 0x11, 0xB2, 0xFA, 0x88, 0xFF};
+      // }
       int ret;
       mbedtls_ccm_context ctx;
       mbedtls_ccm_init(&ctx);
 
       ret = mbedtls_ccm_setkey(&ctx, MBEDTLS_CIPHER_ID_AES, key_.data(), key_.size() * 8);
+
+      ESP_LOGI(TAG, "%s: mbedtls_ccm_setkey: %d", device.address_str().c_str(), ret);
 
       union {
         struct __packed {
@@ -119,26 +121,26 @@ bool PTM215B::parse_device(const esp32_ble_tracker::ESPBTDevice &device) {
       union {
         struct {
           uint32_t security_signature;
-          uint32_t security_signature1;
-          uint32_t security_signature2;
-          uint32_t security_signature3;
         } fields;
-        std::array<uint8_t, 16> buff;
+        std::array<uint8_t, 4> buff;
       } tag{{data_telegram.f.security_signature}};
-
-      std::array<uint8_t, 9> buff;
 
       ESP_LOGD(TAG, "%s: NONCE: %s", device.address_str().c_str(),
                format_hex_pretty(nonce.buff.data(), nonce.buff.size()).c_str());
       ESP_LOGD(TAG, "%s: PAYLOAD: %s", device.address_str().c_str(),
                format_hex_pretty(payload.buff.data(), payload.buff.size()).c_str());
 
-      ret = mbedtls_ccm_encrypt_and_tag(&ctx, buff.size(), nonce.buff.data(), nonce.buff.size(), nullptr, 0,
-                                        payload.buff.data(), buff.data(), tag.buff.data(), tag.buff.size());
+      ret = mbedtls_ccm_auth_decrypt(&ctx, 0, nonce.buff.data(), nonce.buff.size(), payload.buff.data(),
+                                     payload.buff.size(), nullptr, nullptr, tag.buff.data(), tag.buff.size());
 
-      ESP_LOGI(TAG, "%s: ENCRYPT: %d TAG: %x ? %x / %x / %x / %x ", device.address_str().c_str(), ret,
-               data_telegram.f.security_signature, tag.fields.security_signature, tag.fields.security_signature1,
-               tag.fields.security_signature2, tag.fields.security_signature3);
+      ESP_LOGI(TAG, "%s: DECRYPT: %d", device.address_str().c_str(), ret);
+
+      std::array<uint8_t, 4> buff;
+      ret = mbedtls_ccm_encrypt_and_tag(&ctx, 0, nonce.buff.data(), nonce.buff.size(), payload.buff.data(),
+                                        payload.buff.size(), nullptr, nullptr, buff.data(), buff.size());
+
+      ESP_LOGI(TAG, "%s: ENCRYPT: %d, %s", device.address_str().c_str(), ret,
+               format_hex_pretty(buff.data(), buff.size()).c_str());
 
       mbedtls_ccm_free(&ctx);
     }
