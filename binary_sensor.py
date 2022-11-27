@@ -42,7 +42,13 @@ async def to_code(config):
         "b1": var.set_b1_sensor,
     }
 
-    cg.add(var.set_address(config[CONF_MAC_ADDRESS].as_hex))
+    cg.add(var.set_address(
+        cg.MockObj(
+                    "{"
+                    + ",".join(map(str, config[CONF_MAC_ADDRESS].parts))
+                    + "}"
+                )
+        ))
 
     if CONF_KEY in config:
         cg.add(

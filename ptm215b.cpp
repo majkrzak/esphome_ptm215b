@@ -4,12 +4,25 @@
 #include "esphome/core/log.h"
 
 #include <sstream>
+#include <iomanip>
 #include "mbedtls/ccm.h"
 
 namespace esphome {
 namespace ptm215b {
 
 namespace {
+
+template<class T> std::string to_string(const T &bytes) {
+  std::stringstream ss;
+  for (auto &byte : bytes) {
+    ss << std::hex << std::uppercase << std::setfill('0') << std::setw(2);
+    ss << static_cast<int>(byte);
+    if (&byte != &bytes.back()) {
+      ss << ":";
+    }
+  }
+  return ss.str();
+}
 
 union {
   struct __packed {
@@ -33,11 +46,9 @@ static const esp32_ble_tracker::ESPBTUUID manufacturer_id = esp32_ble_tracker::E
 }  // namespace
 
 bool PTM215B::parse_device(const esp32_ble_tracker::ESPBTDevice &device) {
-  if (device.address_uint64() != this->address_) {
-    ESP_LOGVV(TAG, "parse_device(): unknown MAC address.");
+  if (!check_address(*reinterpret_cast<const address_t *>(device.address()))) {
     return false;
   }
-  ESP_LOGVV(TAG, "parse_device(): MAC address %s found.", device.address_str().c_str());
 
   for (auto &manufacturer_data : device.get_manufacturer_datas()) {
     if (manufacturer_data.uuid != manufacturer_id) {
@@ -86,9 +97,7 @@ bool PTM215B::parse_device(const esp32_ble_tracker::ESPBTDevice &device) {
           std::array<uint8_t, 3> _padding;
         } fields;
         std::array<uint8_t, 13> buff;
-      } nonce{{{static_cast<uint8_t>(address_ >> 0 * 8), static_cast<uint8_t>(address_ >> 1 * 8),
-                static_cast<uint8_t>(address_ >> 2 * 8), static_cast<uint8_t>(address_ >> 3 * 8),
-                static_cast<uint8_t>(address_ >> 4 * 8), static_cast<uint8_t>(address_ >> 5 * 8)},
+      } nonce{{{address_[5], address_[4], address_[3], address_[2], address_[1], address_[0]},
                data_telegram.f.sequence_counter,
                {0, 0, 0}}};
 
@@ -138,8 +147,6 @@ bool PTM215B::parse_device(const esp32_ble_tracker::ESPBTDevice &device) {
       ESP_LOGD(TAG, "%s: New sequence %d", device.address_str().c_str(), last_sequence_);
     }
 
-    ESP_LOGI(TAG, "%s: %s", device.address_str().c_str(), data_telegram.f.switch_status.to_string().c_str());
-
     update_state(data_telegram.f.switch_status);
 
     break;
@@ -148,8 +155,18 @@ bool PTM215B::parse_device(const esp32_ble_tracker::ESPBTDevice &device) {
   return true;
 }
 
+bool PTM215B::check_address(const address_t &address) {
+  if (address == address_) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 void PTM215B::update_state(state new_state) {
   state_ = new_state;
+
+  ESP_LOGI(TAG, "%s: %s", to_string(address_).c_str(), state_.to_string().c_str());
 
   if (bar_sensor_) {
     bar_sensor_->publish_state(state_.press);
