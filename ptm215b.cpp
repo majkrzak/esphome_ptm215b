@@ -34,15 +34,6 @@ std::string to_string(const PTM215B::switch_status_t &switch_status) {
   return ss.str();
 }
 
-union {
-  struct __packed {
-    PTM215B::sequence_counter_t sequence_counter;
-    PTM215B::switch_status_t switch_status;
-    uint32_t security_signature;
-  } f;
-  std::array<uint8_t, 9> b;
-} data_telegram;
-
 static const char *const TAG = "ptm215b";
 }  // namespace
 
@@ -87,7 +78,12 @@ bool PTM215B::handle_data(const data_t &data) {
     return false;
   }
 
-  std::copy_n(data.begin(), 9, data_telegram.b.begin());
+  union {
+    data_telegram_t f;
+    std::array<uint8_t, sizeof(data_telegram_t)> b;
+  } data_telegram;
+
+  std::copy_n(data.begin(), data_telegram.b.size(), data_telegram.b.begin());
 
   if (!check_debounce(data_telegram.f.sequence_counter)) {
     return false;
@@ -107,7 +103,7 @@ bool PTM215B::handle_data(const data_t &data) {
     union {
       struct __packed {
         std::array<uint8_t, 6> source_address;
-        uint32_t sequence_counter;
+        sequence_counter_t sequence_counter;
         std::array<uint8_t, 3> _padding;
       } fields;
       std::array<uint8_t, 13> buff;
@@ -120,25 +116,15 @@ bool PTM215B::handle_data(const data_t &data) {
         uint8_t len;
         uint8_t type;
         uint16_t manufacturer;
-        uint32_t sequence_counter;
+        sequence_counter_t sequence_counter;
         switch_status_t state;
       } fields;
       std::array<uint8_t, 9> buff;
     } payload{{0x0C, 0xFF, 0x03DA, data_telegram.f.sequence_counter, data_telegram.f.switch_status}};
 
-    union {
-      struct {
-        uint32_t security_signature;
-      } fields;
-      std::array<uint8_t, 4> buff;
-    } tag{{data_telegram.f.security_signature}};
-
     ret = mbedtls_ccm_auth_decrypt(&ctx, 0, nonce.buff.data(), nonce.buff.size(), payload.buff.data(),
-                                   payload.buff.size(), nullptr, nullptr, tag.buff.data(), tag.buff.size());
-
-    std::array<uint8_t, 4> buff;
-    ret = mbedtls_ccm_encrypt_and_tag(&ctx, 0, nonce.buff.data(), nonce.buff.size(), payload.buff.data(),
-                                      payload.buff.size(), nullptr, nullptr, buff.data(), buff.size());
+                                   payload.buff.size(), nullptr, nullptr, data_telegram.f.security_signature.data(),
+                                   data_telegram.f.security_signature.size());
 
     mbedtls_ccm_free(&ctx);
   }
