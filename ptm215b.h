@@ -46,7 +46,7 @@ class PTM215B : public Component, public esp32_ble_tracker::ESPBTDeviceListener 
   bool parse_device(const esp32_ble_tracker::ESPBTDevice &device) override;
 
  public:
-  const switch_status_t get_state() const { return state_; };
+  const switch_status_t get_state() const { return switch_status_; };
 
  protected:
   address_t address_{};
@@ -59,7 +59,7 @@ class PTM215B : public Component, public esp32_ble_tracker::ESPBTDeviceListener 
   binary_sensor::BinarySensor *b1_sensor_{nullptr};
 
  private:
-  switch_status_t state_{};
+  switch_status_t switch_status_{};
   sequence_counter_t sequence_counter_{};
 
  private:
@@ -72,7 +72,8 @@ class PTM215B : public Component, public esp32_ble_tracker::ESPBTDeviceListener 
   bool check_replay(const sequence_counter_t &sequence_counter);
   bool check_signature();
   void update_sequence_counter(const sequence_counter_t &sequence_counter);
-  void update_state(switch_status_t new_state);
+  void update_switch_status(const switch_status_t &switch_status);
+  void notify();
 };
 
 }  // namespace ptm215b

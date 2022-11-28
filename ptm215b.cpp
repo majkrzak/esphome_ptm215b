@@ -145,9 +145,11 @@ bool PTM215B::handle_data(const data_t &data) {
 
   update_sequence_counter(data_telegram.f.sequence_counter);
 
-  update_state(data_telegram.f.switch_status);
+  update_switch_status(data_telegram.f.switch_status);
 
-  return false;
+  notify();
+
+  return true;
 }
 
 bool PTM215B::check_debounce(const sequence_counter_t &sequence_counter) {
@@ -172,25 +174,26 @@ void PTM215B::update_sequence_counter(const sequence_counter_t &sequence_counter
   sequence_counter_ = sequence_counter;
 }
 
-void PTM215B::update_state(switch_status_t new_state) {
-  state_ = new_state;
+void PTM215B::update_switch_status(const switch_status_t &switch_status) {
+  switch_status_ = switch_status;
+  ESP_LOGI(TAG, "%s: %s", to_string(switch_status_).c_str(), to_string(switch_status_).c_str());
+}
 
-  ESP_LOGI(TAG, "%s: %s", to_string(address_).c_str(), to_string(state_).c_str());
-
+void PTM215B::notify() {
   if (bar_sensor_) {
-    bar_sensor_->publish_state(state_.press);
+    bar_sensor_->publish_state(switch_status_.press);
   }
   if (a0_sensor_) {
-    a0_sensor_->publish_state(state_.A0);
+    a0_sensor_->publish_state(switch_status_.A0);
   }
   if (a1_sensor_) {
-    a1_sensor_->publish_state(state_.A1);
+    a1_sensor_->publish_state(switch_status_.A1);
   }
   if (b0_sensor_) {
-    b0_sensor_->publish_state(state_.B0);
+    b0_sensor_->publish_state(switch_status_.B0);
   }
   if (b1_sensor_) {
-    b1_sensor_->publish_state(state_.B1);
+    b1_sensor_->publish_state(switch_status_.B1);
   }
 }
 
