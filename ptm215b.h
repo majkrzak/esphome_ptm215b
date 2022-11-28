@@ -12,31 +12,32 @@ namespace ptm215b {
 
 class PTM215B : public Component, public esp32_ble_tracker::ESPBTDeviceListener {
  public:
-  typedef std::array<uint8_t, 6> address_t;
-  typedef std::array<uint8_t, 16> key_t;
-  typedef esp32_ble_tracker::ESPBTUUID manufacturer_t;
-  typedef std::vector<uint8_t> data_t;
-  typedef uint32_t sequence_counter_t;
-  typedef std::array<uint8_t, 4> security_signature_t;
-  typedef struct __packed {
+  using address_t = std::array<uint8_t, 6>;
+  using key_t = std::array<uint8_t, 16>;
+  using manufacturer_t = esp32_ble_tracker::ESPBTUUID;
+  using data_t = std::vector<uint8_t>;
+  using sequence_counter_t = uint32_t;
+  using security_signature_t = std::array<uint8_t, 4>;
+  using switch_status_t = struct __packed {
     bool press : 1;
     bool A0 : 1;
     bool A1 : 1;
     bool B0 : 1;
     bool B1 : 1;
-  } switch_status_t;
-  typedef struct __packed {
+  };
+  using data_telegram_t = struct __packed {
     sequence_counter_t sequence_counter;
     switch_status_t switch_status;
     security_signature_t security_signature;
-  } data_telegram_t;
-  typedef struct __packed {
+  };
+  using commissioning_telegram_t = struct __packed {
     sequence_counter_t sequence_counter;
     key_t security_key;
     address_t static_source_address;
-  } commissioning_telegram_t;
+  };
 
- public:
+  virtual ~PTM215B(){};
+
   void set_address(const address_t &&address) { address_ = address; }
   void set_key(const key_t &&key) { key_ = key; }
   void set_bar_sensor(binary_sensor::BinarySensor *sensor) { this->bar_sensor_ = sensor; }
@@ -45,11 +46,9 @@ class PTM215B : public Component, public esp32_ble_tracker::ESPBTDeviceListener 
   void set_b0_sensor(binary_sensor::BinarySensor *sensor) { this->b0_sensor_ = sensor; }
   void set_b1_sensor(binary_sensor::BinarySensor *sensor) { this->b1_sensor_ = sensor; }
 
- public:
   bool parse_device(const esp32_ble_tracker::ESPBTDevice &device) override;
 
- public:
-  const switch_status_t get_state() const { return switch_status_; };
+  switch_status_t get_state() const { return switch_status_; };
 
  protected:
   address_t address_{};
@@ -65,20 +64,19 @@ class PTM215B : public Component, public esp32_ble_tracker::ESPBTDeviceListener 
   switch_status_t switch_status_{};
   sequence_counter_t sequence_counter_{};
 
- private:
-  bool check_address(const address_t &address);
-  bool check_manufacturer(const manufacturer_t &manufacturer);
-  bool handle_data(const data_t &data);
-  optional<data_telegram_t> parse_data_telegram(const data_t &data);
-  optional<commissioning_telegram_t> parse_commissioning_telegram(const data_t &data);
-  bool handle_data_telegram(const data_telegram_t &data_telegram);
-  bool handle_commissioning_telegram(const commissioning_telegram_t &commissioning_telegram);
-  bool check_debounce(const sequence_counter_t &sequence_counter);
-  bool check_replay(const sequence_counter_t &sequence_counter);
-  bool check_signature(const data_telegram_t &data_telegram);
-  void update_sequence_counter(const sequence_counter_t &sequence_counter);
-  void update_switch_status(const switch_status_t &switch_status);
-  void notify();
+  bool check_address_(const address_t &address);
+  bool check_manufacturer_(const manufacturer_t &manufacturer);
+  bool handle_data_(const data_t &data);
+  optional<data_telegram_t> parse_data_telegram_(const data_t &data);
+  optional<commissioning_telegram_t> parse_commissioning_telegram_(const data_t &data);
+  bool handle_data_telegram_(const data_telegram_t &data_telegram);
+  bool handle_commissioning_telegram_(const commissioning_telegram_t &commissioning_telegram);
+  bool check_debounce_(const sequence_counter_t &sequence_counter);
+  bool check_replay_(const sequence_counter_t &sequence_counter);
+  bool check_signature_(const data_telegram_t &data_telegram);
+  void update_sequence_counter_(const sequence_counter_t &sequence_counter);
+  void update_switch_status_(const switch_status_t &switch_status);
+  void notify_();
 };
 
 }  // namespace ptm215b
