@@ -38,30 +38,30 @@ static const char *const TAG = "ptm215b";
 }  // namespace
 
 bool PTM215B::parse_device(const esp32_ble_tracker::ESPBTDevice &device) {
-  if (!check_address_(*reinterpret_cast<const address_t *>(device.address()))) {
+  if (!this->check_address(*reinterpret_cast<const address_t *>(device.address()))) {
     return false;
   }
 
   for (auto &manufacturer_data : device.get_manufacturer_datas()) {
-    if (!check_manufacturer_(manufacturer_data.uuid)) {
+    if (!this->check_manufacturer(manufacturer_data.uuid)) {
       continue;
     }
 
-    return handle_data_(manufacturer_data.data);
+    return this->handle_data(manufacturer_data.data);
   }
 
   return false;
 }
 
-bool PTM215B::check_address_(const address_t &address) {
-  if (address == address_) {
+bool PTM215B::check_address(const address_t &address) {
+  if (address == this->address_) {
     return true;
   } else {
     return false;
   }
 }
 
-bool PTM215B::check_manufacturer_(const manufacturer_t &manufacturer) {
+bool PTM215B::check_manufacturer(const manufacturer_t &manufacturer) {
   if (manufacturer == esp32_ble_tracker::ESPBTUUID::from_uint16(0x03DA)) {
     return true;
   } else {
@@ -69,21 +69,21 @@ bool PTM215B::check_manufacturer_(const manufacturer_t &manufacturer) {
   }
 }
 
-bool PTM215B::handle_data_(const data_t &data) {
-  auto data_telegram_o = parse_data_telegram_(data);
+bool PTM215B::handle_data(const data_t &data) {
+  auto data_telegram_o = this->parse_data_telegram(data);
   if (data_telegram_o.has_value()) {
-    return handle_data_telegram_(data_telegram_o.value());
+    return this->handle_data_telegram(data_telegram_o.value());
   }
 
-  auto commissioning_telegram_o = parse_commissioning_telegram_(data);
+  auto commissioning_telegram_o = this->parse_commissioning_telegram(data);
   if (commissioning_telegram_o.has_value()) {
-    return handle_commissioning_telegram_(commissioning_telegram_o.value());
+    return this->handle_commissioning_telegram(commissioning_telegram_o.value());
   }
 
   return false;
 }
 
-optional<PTM215B::data_telegram_t> PTM215B::parse_data_telegram_(const data_t &data) {
+optional<PTM215B::data_telegram_t> PTM215B::parse_data_telegram(const data_t &data) {
   if (data.size() != sizeof(data_telegram_t)) {
     return nullopt;
   }
@@ -98,7 +98,7 @@ optional<PTM215B::data_telegram_t> PTM215B::parse_data_telegram_(const data_t &d
   return make_optional(data_telegram);
 }
 
-optional<PTM215B::commissioning_telegram_t> PTM215B::parse_commissioning_telegram_(const data_t &data) {
+optional<PTM215B::commissioning_telegram_t> PTM215B::parse_commissioning_telegram(const data_t &data) {
   if (data.size() != sizeof(commissioning_telegram_t)) {
     return nullopt;
   }
@@ -113,64 +113,64 @@ optional<PTM215B::commissioning_telegram_t> PTM215B::parse_commissioning_telegra
   return make_optional(commissioning_telegram);
 }
 
-bool PTM215B::handle_data_telegram_(const data_telegram_t &data_telegram) {
-  if (!check_debounce_(data_telegram.sequence_counter)) {
+bool PTM215B::handle_data_telegram(const data_telegram_t &data_telegram) {
+  if (!this->check_debounce(data_telegram.sequence_counter)) {
     return false;
   }
 
-  if (!check_replay_(data_telegram.sequence_counter)) {
+  if (!this->check_replay(data_telegram.sequence_counter)) {
     return false;
   }
 
-  if (!check_signature_(data_telegram)) {
+  if (!this->check_signature(data_telegram)) {
     return false;
   }
 
-  update_sequence_counter_(data_telegram.sequence_counter);
+  this->update_sequence_counter(data_telegram.sequence_counter);
 
-  update_switch_status_(data_telegram.switch_status);
+  this->update_switch_status(data_telegram.switch_status);
 
-  notify_();
+  this->notify();
 
   return true;
 }
 
-bool PTM215B::handle_commissioning_telegram_(const commissioning_telegram_t &commissioning_telegram) {
-  if (!check_debounce_(commissioning_telegram.sequence_counter)) {
+bool PTM215B::handle_commissioning_telegram(const commissioning_telegram_t &commissioning_telegram) {
+  if (!this->check_debounce(commissioning_telegram.sequence_counter)) {
     return false;
   }
 
-  if (!check_replay_(commissioning_telegram.sequence_counter)) {
+  if (!this->check_replay(commissioning_telegram.sequence_counter)) {
     return false;
   }
 
-  update_sequence_counter_(commissioning_telegram.sequence_counter);
+  this->update_sequence_counter(commissioning_telegram.sequence_counter);
 
   ESP_LOGI(TAG,
            "%s: Device is in commisioning mode! Security key is %s. (To exit commisioning mode invoke `Any Other "
            "Button Action`)",
-           to_string(address_).c_str(), to_string(commissioning_telegram.security_key).c_str());
+           to_string(this->address_).c_str(), to_string(commissioning_telegram.security_key).c_str());
 
   return true;
 }
 
-bool PTM215B::check_debounce_(const sequence_counter_t &sequence_counter) {
-  if (sequence_counter != sequence_counter_) {
+bool PTM215B::check_debounce(const sequence_counter_t &sequence_counter) {
+  if (sequence_counter != this->sequence_counter_) {
     return true;
   } else {
     return false;
   }
 }
 
-bool PTM215B::check_replay_(const sequence_counter_t &sequence_counter) {
-  if (sequence_counter > sequence_counter_) {
+bool PTM215B::check_replay(const sequence_counter_t &sequence_counter) {
+  if (sequence_counter > this->sequence_counter_) {
     return true;
   } else {
     return false;
   }
 }
 
-bool PTM215B::check_signature_(const data_telegram_t &data_telegram) {
+bool PTM215B::check_signature(const data_telegram_t &data_telegram) {
   std::unique_ptr<mbedtls_ccm_context, std::function<void(mbedtls_ccm_context *)>> ctx(([](mbedtls_ccm_context *ctx) {
                                                                                          mbedtls_ccm_init(ctx);
                                                                                          return ctx;
@@ -180,7 +180,7 @@ bool PTM215B::check_signature_(const data_telegram_t &data_telegram) {
                                                                                          delete ctx;
                                                                                        });
 
-  if (mbedtls_ccm_setkey(ctx.get(), MBEDTLS_CIPHER_ID_AES, key_.data(), key_.size() * 8)) {
+  if (mbedtls_ccm_setkey(ctx.get(), MBEDTLS_CIPHER_ID_AES, this->key_.data(), this->key_.size() * 8)) {
     return false;
   }
 
@@ -191,7 +191,8 @@ bool PTM215B::check_signature_(const data_telegram_t &data_telegram) {
       std::array<uint8_t, 3> _padding;
     } fields;
     std::array<uint8_t, 13> buff;
-  } nonce{{{address_[5], address_[4], address_[3], address_[2], address_[1], address_[0]},
+  } nonce{{{this->address_[5], this->address_[4], this->address_[3], this->address_[2], this->address_[1],
+            this->address_[0]},
            data_telegram.sequence_counter,
            {0, 0, 0}}};
 
@@ -215,30 +216,30 @@ bool PTM215B::check_signature_(const data_telegram_t &data_telegram) {
   return true;
 }
 
-void PTM215B::update_sequence_counter_(const sequence_counter_t &sequence_counter) {
-  sequence_counter_ = sequence_counter;
+void PTM215B::update_sequence_counter(const sequence_counter_t &sequence_counter) {
+  this->sequence_counter_ = sequence_counter;
 }
 
-void PTM215B::update_switch_status_(const switch_status_t &switch_status) {
-  switch_status_ = switch_status;
-  ESP_LOGI(TAG, "%s: %s", to_string(address_).c_str(), to_string(switch_status_).c_str());
+void PTM215B::update_switch_status(const switch_status_t &switch_status) {
+  this->switch_status_ = switch_status;
+  ESP_LOGI(TAG, "%s: %s", to_string(this->address_).c_str(), to_string(this->switch_status_).c_str());
 }
 
-void PTM215B::notify_() {
-  if (bar_sensor_) {
-    bar_sensor_->publish_state(switch_status_.press);
+void PTM215B::notify() {
+  if (this->bar_sensor_) {
+    this->bar_sensor_->publish_state(this->switch_status_.press);
   }
-  if (a0_sensor_) {
-    a0_sensor_->publish_state(switch_status_.A0);
+  if (this->a0_sensor_) {
+    this->a0_sensor_->publish_state(this->switch_status_.A0);
   }
-  if (a1_sensor_) {
-    a1_sensor_->publish_state(switch_status_.A1);
+  if (this->a1_sensor_) {
+    this->a1_sensor_->publish_state(this->switch_status_.A1);
   }
-  if (b0_sensor_) {
-    b0_sensor_->publish_state(switch_status_.B0);
+  if (this->b0_sensor_) {
+    this->b0_sensor_->publish_state(this->switch_status_.B0);
   }
-  if (b1_sensor_) {
-    b1_sensor_->publish_state(switch_status_.B1);
+  if (this->b1_sensor_) {
+    this->b1_sensor_->publish_state(this->switch_status_.B1);
   }
 }
 
