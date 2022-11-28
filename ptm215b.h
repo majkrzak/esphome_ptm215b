@@ -30,6 +30,11 @@ class PTM215B : public Component, public esp32_ble_tracker::ESPBTDeviceListener 
     switch_status_t switch_status;
     security_signature_t security_signature;
   } data_telegram_t;
+  typedef struct __packed {
+    sequence_counter_t sequence_counter;
+    key_t security_key;
+    address_t static_source_address;
+  } commissioning_telegram_t;
 
  public:
   void set_address(const address_t &&address) { address_ = address; }
@@ -64,8 +69,10 @@ class PTM215B : public Component, public esp32_ble_tracker::ESPBTDeviceListener 
   bool check_address(const address_t &address);
   bool check_manufacturer(const manufacturer_t &manufacturer);
   bool handle_data(const data_t &data);
-  // bool handle_data_telegram();
-  // bool handle_commissioning_telegram();
+  optional<data_telegram_t> parse_data_telegram(const data_t &data);
+  optional<commissioning_telegram_t> parse_commissioning_telegram(const data_t &data);
+  bool handle_data_telegram(const data_telegram_t &data_telegram);
+  bool handle_commissioning_telegram(const commissioning_telegram_t &commissioning_telegram);
   bool check_debounce(const sequence_counter_t &sequence_counter);
   bool check_replay(const sequence_counter_t &sequence_counter);
   bool check_signature(const data_telegram_t &data_telegram);

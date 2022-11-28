@@ -70,38 +70,86 @@ bool PTM215B::check_manufacturer(const manufacturer_t &manufacturer) {
 }
 
 bool PTM215B::handle_data(const data_t &data) {
-  if (data.size() == 26) {
-    return false;
+  auto data_telegram_o = parse_data_telegram(data);
+  if (data_telegram_o.has_value()) {
+    return handle_data_telegram(data_telegram_o.value());
   }
 
-  if (data.size() != 9) {
-    return false;
+  auto commissioning_telegram_o = parse_commissioning_telegram(data);
+  if (commissioning_telegram_o.has_value()) {
+    return handle_commissioning_telegram(commissioning_telegram_o.value());
+  }
+
+  return false;
+}
+
+optional<PTM215B::data_telegram_t> PTM215B::parse_data_telegram(const data_t &data) {
+  if (data.size() != sizeof(data_telegram_t)) {
+    return nullopt;
   }
 
   union {
-    data_telegram_t f;
-    std::array<uint8_t, sizeof(data_telegram_t)> b;
-  } data_telegram;
+    data_telegram_t data_telegram;
+    std::array<uint8_t, sizeof(data_telegram_t)> buff;
+  };
 
-  std::copy_n(data.begin(), data_telegram.b.size(), data_telegram.b.begin());
+  std::copy_n(data.begin(), buff.size(), buff.begin());
 
-  if (!check_debounce(data_telegram.f.sequence_counter)) {
+  return make_optional(data_telegram);
+}
+
+optional<PTM215B::commissioning_telegram_t> PTM215B::parse_commissioning_telegram(const data_t &data) {
+  if (data.size() != sizeof(commissioning_telegram_t)) {
+    return nullopt;
+  }
+
+  union {
+    commissioning_telegram_t commissioning_telegram;
+    std::array<uint8_t, sizeof(commissioning_telegram_t)> buff;
+  };
+
+  std::copy_n(data.begin(), buff.size(), buff.begin());
+
+  return make_optional(commissioning_telegram);
+}
+
+bool PTM215B::handle_data_telegram(const data_telegram_t &data_telegram) {
+  if (!check_debounce(data_telegram.sequence_counter)) {
     return false;
   }
 
-  if (!check_replay(data_telegram.f.sequence_counter)) {
+  if (!check_replay(data_telegram.sequence_counter)) {
     return false;
   }
 
-  if (!check_signature(data_telegram.f)) {
+  if (!check_signature(data_telegram)) {
     return false;
   }
 
-  update_sequence_counter(data_telegram.f.sequence_counter);
+  update_sequence_counter(data_telegram.sequence_counter);
 
-  update_switch_status(data_telegram.f.switch_status);
+  update_switch_status(data_telegram.switch_status);
 
   notify();
+
+  return true;
+}
+
+bool PTM215B::handle_commissioning_telegram(const commissioning_telegram_t &commissioning_telegram) {
+  if (!check_debounce(commissioning_telegram.sequence_counter)) {
+    return false;
+  }
+
+  if (!check_replay(commissioning_telegram.sequence_counter)) {
+    return false;
+  }
+
+  update_sequence_counter(commissioning_telegram.sequence_counter);
+
+  ESP_LOGI(TAG,
+           "%s: Device is in commisioning mode! Security key is %s. (To exit commisioning mode invoke `Any Other "
+           "Button Action`)",
+           to_string(address_).c_str(), to_string(commissioning_telegram.security_key).c_str());
 
   return true;
 }
@@ -173,7 +221,7 @@ void PTM215B::update_sequence_counter(const sequence_counter_t &sequence_counter
 
 void PTM215B::update_switch_status(const switch_status_t &switch_status) {
   switch_status_ = switch_status;
-  ESP_LOGI(TAG, "%s: %s", to_string(switch_status_).c_str(), to_string(switch_status_).c_str());
+  ESP_LOGI(TAG, "%s: %s", to_string(address_).c_str(), to_string(switch_status_).c_str());
 }
 
 void PTM215B::notify() {
