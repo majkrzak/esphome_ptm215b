@@ -68,7 +68,7 @@ class PTM215B : public Component, public esp32_ble_tracker::ESPBTDeviceListener 
   // bool handle_commissioning_telegram();
   bool check_debounce(const sequence_counter_t &sequence_counter);
   bool check_replay(const sequence_counter_t &sequence_counter);
-  bool check_signature();
+  bool check_signature(const data_telegram_t &data_telegram);
   void update_sequence_counter(const sequence_counter_t &sequence_counter);
   void update_switch_status(const switch_status_t &switch_status);
   void notify();
