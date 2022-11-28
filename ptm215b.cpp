@@ -102,7 +102,7 @@ optional<PTM215B::data_telegram_t> PTM215B::parse_data_telegram(const data_t &da
 
   union {
     data_telegram_t data_telegram;
-    std::array<uint8_t, sizeof(data_telegram_t)> buff;
+    array_t<sizeof(data_telegram_t)> buff;
   };
 
   std::copy_n(data.begin(), buff.size(), buff.begin());
@@ -117,7 +117,7 @@ optional<PTM215B::commissioning_telegram_t> PTM215B::parse_commissioning_telegra
 
   union {
     commissioning_telegram_t commissioning_telegram;
-    std::array<uint8_t, sizeof(commissioning_telegram_t)> buff;
+    array_t<sizeof(commissioning_telegram_t)> buff;
   };
 
   std::copy_n(data.begin(), buff.size(), buff.begin());
@@ -199,21 +199,21 @@ bool PTM215B::check_signature(const data_telegram_t &data_telegram) {
 
   if (mbedtls_ccm_setkey(ctx.get(), MBEDTLS_CIPHER_ID_AES, this->security_key_.data(),
                          this->security_key_.size() * 8)) {
+    ESP_LOGE(TAG, "%s: mbedtls_ccm_setkey failed", to_string(this->address_).c_str());
     return false;
   }
 
   union {
     struct __packed {
-      std::array<uint8_t, 6> source_address;
+      address_t source_address;
       sequence_counter_t sequence_counter;
-      std::array<uint8_t, 3> _padding;
+      array_t<3> _padding;
     } fields;
-    std::array<uint8_t, 13> buff;
+    array_t<13> buff;
   } nonce{{{this->address_[5], this->address_[4], this->address_[3], this->address_[2], this->address_[1],
             this->address_[0]},
            data_telegram.sequence_counter,
            {0, 0, 0}}};
-
   union {
     struct __packed {
       uint8_t len;
@@ -222,12 +222,16 @@ bool PTM215B::check_signature(const data_telegram_t &data_telegram) {
       sequence_counter_t sequence_counter;
       switch_status_t state;
     } fields;
-    std::array<uint8_t, 9> buff;
+    array_t<9> buff;
   } payload{{0x0C, 0xFF, 0x03DA, data_telegram.sequence_counter, data_telegram.switch_status}};
+
+  ESP_LOGD(TAG, "%s: NONCE: %s", to_string(this->address_).c_str(), to_string(nonce.buff).c_str());
+  ESP_LOGD(TAG, "%s: PAYLOAD: %s", to_string(this->address_).c_str(), to_string(payload.buff).c_str());
 
   if (mbedtls_ccm_auth_decrypt(ctx.get(), 0, nonce.buff.data(), nonce.buff.size(), payload.buff.data(),
                                payload.buff.size(), nullptr, nullptr, data_telegram.security_signature.data(),
                                data_telegram.security_signature.size())) {
+    ESP_LOGE(TAG, "%s: mbedtls_ccm_auth_decrypt failed", to_string(this->address_).c_str());
     return false;
   }
 

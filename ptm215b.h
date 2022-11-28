@@ -12,12 +12,13 @@ namespace ptm215b {
 
 class PTM215B : public Component, public esp32_ble_tracker::ESPBTDeviceListener {
  public:
-  using address_t = std::array<uint8_t, 6>;
-  using security_key_t = std::array<uint8_t, 16>;
+  template<int N> using array_t = std::array<uint8_t, N>;
+  using address_t = array_t<6>;
+  using security_key_t = array_t<16>;
   using manufacturer_t = esp32_ble_tracker::ESPBTUUID;
   using data_t = std::vector<uint8_t>;
   using sequence_counter_t = uint32_t;
-  using security_signature_t = std::array<uint8_t, 4>;
+  using security_signature_t = array_t<4>;
   using switch_status_t = struct __packed {
     bool press : 1;
     bool A0 : 1;
