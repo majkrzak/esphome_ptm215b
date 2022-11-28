@@ -42,11 +42,11 @@ void PTM215B::dump_config() {
   ESP_LOGCONFIG(TAG, "PTM 215B:");
   ESP_LOGCONFIG(TAG, " Address: %s", to_string(this->address_).c_str());
   ESP_LOGCONFIG(TAG, " Security Key: %s", to_string(this->security_key_).c_str());
-  LOG_BINARY_SENSOR(" ", " Any Button", this->bar_sensor_);
-  LOG_BINARY_SENSOR(" ", " A0 Button", this->a0_sensor_);
-  LOG_BINARY_SENSOR(" ", " A1 Button", this->a1_sensor_);
-  LOG_BINARY_SENSOR(" ", " B0 Button", this->b0_sensor_);
-  LOG_BINARY_SENSOR(" ", " B1 Button", this->b1_sensor_);
+  LOG_BINARY_SENSOR(" ", "Any Button", this->bar_sensor_);
+  LOG_BINARY_SENSOR(" ", "A0 Button", this->a0_sensor_);
+  LOG_BINARY_SENSOR(" ", "A1 Button", this->a1_sensor_);
+  LOG_BINARY_SENSOR(" ", "B0 Button", this->b0_sensor_);
+  LOG_BINARY_SENSOR(" ", "B1 Button", this->b1_sensor_);
 }
 
 bool PTM215B::parse_device(const esp32_ble_tracker::ESPBTDevice &device) {
@@ -183,6 +183,11 @@ bool PTM215B::check_replay(const sequence_counter_t &sequence_counter) {
 }
 
 bool PTM215B::check_signature(const data_telegram_t &data_telegram) {
+  if (this->security_key_ == security_key_t{}) {
+    ESP_LOGD(TAG, "%s: Skipping signature check, key is empty.", to_string(this->address_).c_str());
+    return true;
+  }
+
   std::unique_ptr<mbedtls_ccm_context, std::function<void(mbedtls_ccm_context *)>> ctx(([](mbedtls_ccm_context *ctx) {
                                                                                          mbedtls_ccm_init(ctx);
                                                                                          return ctx;
