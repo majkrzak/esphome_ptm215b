@@ -16,7 +16,7 @@ class PTM215B : public Component, public esp32_ble_tracker::ESPBTDeviceListener 
   typedef std::array<uint8_t, 16> key_t;
   typedef esp32_ble_tracker::ESPBTUUID manufacturer_t;
   typedef std::vector<uint8_t> data_t;
-  typedef uint32_le_t sequence_counter_t;
+  typedef uint32_t sequence_counter_t;
   typedef std::array<uint8_t, 4> security_signature_t;
 
   typedef struct __packed {
@@ -60,7 +60,7 @@ class PTM215B : public Component, public esp32_ble_tracker::ESPBTDeviceListener 
 
  private:
   switch_status_t state_{};
-  uint32_t last_sequence_{0};
+  sequence_counter_t sequence_counter_{};
 
  private:
   bool check_address(const address_t &address);
@@ -68,7 +68,10 @@ class PTM215B : public Component, public esp32_ble_tracker::ESPBTDeviceListener 
   bool handle_data(const data_t &data);
   // bool handle_data_telegram();
   // bool handle_commissioning_telegram();
+  bool check_debounce(const sequence_counter_t &sequence_counter);
+  bool check_replay(const sequence_counter_t &sequence_counter);
   bool check_signature();
+  void update_sequence_counter(const sequence_counter_t &sequence_counter);
   void update_state(switch_status_t new_state);
 };
 

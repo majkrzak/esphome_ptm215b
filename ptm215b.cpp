@@ -36,7 +36,7 @@ std::string to_string(const PTM215B::switch_status_t &switch_status) {
 
 union {
   struct __packed {
-    uint32_t sequence_counter;
+    PTM215B::sequence_counter_t sequence_counter;
     PTM215B::switch_status_t switch_status;
     uint32_t security_signature;
   } f;
@@ -89,6 +89,14 @@ bool PTM215B::handle_data(const data_t &data) {
 
   std::copy_n(data.begin(), 9, data_telegram.b.begin());
 
+  if (!check_debounce(data_telegram.f.sequence_counter)) {
+    return false;
+  }
+
+  if (!check_replay(data_telegram.f.sequence_counter)) {
+    return false;
+  }
+
   {
     int ret;
     mbedtls_ccm_context ctx;
@@ -135,15 +143,33 @@ bool PTM215B::handle_data(const data_t &data) {
     mbedtls_ccm_free(&ctx);
   }
 
-  if (last_sequence_ == data_telegram.f.sequence_counter) {
-    return false;
-  } else {
-    last_sequence_ = data_telegram.f.sequence_counter;
-  }
+  update_sequence_counter(data_telegram.f.sequence_counter);
 
   update_state(data_telegram.f.switch_status);
 
   return false;
+}
+
+bool PTM215B::check_debounce(const sequence_counter_t &sequence_counter) {
+  if (sequence_counter != sequence_counter_) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+bool PTM215B::check_replay(const sequence_counter_t &sequence_counter) {
+  if (sequence_counter > sequence_counter_) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+// check signature
+
+void PTM215B::update_sequence_counter(const sequence_counter_t &sequence_counter) {
+  sequence_counter_ = sequence_counter;
 }
 
 void PTM215B::update_state(switch_status_t new_state) {
