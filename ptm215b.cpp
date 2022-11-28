@@ -34,8 +34,20 @@ std::string to_string(const PTM215B::switch_status_t &switch_status) {
   return ss.str();
 }
 
-static const char *const TAG = "ptm215b";
 }  // namespace
+
+static const char *const TAG = "ptm215b";
+
+void PTM215B::dump_config() {
+  ESP_LOGCONFIG(TAG, "PTM 215B:");
+  ESP_LOGCONFIG(TAG, " Address: %s", to_string(this->address_).c_str());
+  ESP_LOGCONFIG(TAG, " Security Key: %s", to_string(this->security_key_).c_str());
+  LOG_BINARY_SENSOR(" ", " Any Button", this->bar_sensor_);
+  LOG_BINARY_SENSOR(" ", " A0 Button", this->a0_sensor_);
+  LOG_BINARY_SENSOR(" ", " A1 Button", this->a1_sensor_);
+  LOG_BINARY_SENSOR(" ", " B0 Button", this->b0_sensor_);
+  LOG_BINARY_SENSOR(" ", " B1 Button", this->b1_sensor_);
+}
 
 bool PTM215B::parse_device(const esp32_ble_tracker::ESPBTDevice &device) {
   if (!this->check_address(*reinterpret_cast<const address_t *>(device.address()))) {
@@ -180,7 +192,8 @@ bool PTM215B::check_signature(const data_telegram_t &data_telegram) {
                                                                                          delete ctx;
                                                                                        });
 
-  if (mbedtls_ccm_setkey(ctx.get(), MBEDTLS_CIPHER_ID_AES, this->key_.data(), this->key_.size() * 8)) {
+  if (mbedtls_ccm_setkey(ctx.get(), MBEDTLS_CIPHER_ID_AES, this->security_key_.data(),
+                         this->security_key_.size() * 8)) {
     return false;
   }
 
