@@ -2,6 +2,8 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import esp32_ble_tracker, binary_sensor
 from esphome.const import CONF_MAC_ADDRESS, CONF_ID
+from .config_validation import security_key
+from .const import CONF_SECURITY_KEY
 
 CODEOWNERS = ["@majkrzak"]
 DEPENDENCIES = ["esp32_ble_tracker"]
@@ -10,29 +12,6 @@ ptm215b_ns = cg.esphome_ns.namespace("ptm215b")
 PTM215B = ptm215b_ns.class_(
     "PTM215B", esp32_ble_tracker.ESPBTDeviceListener, cg.Component
 )
-
-CONF_SECURITY_KEY = "security_key"
-
-
-def security_key(value):
-    value = cv.string_strict(value)
-    parts = value.split(":")
-    if len(parts) != 16:
-        raise cv.Invalid("Security Key must consist of 16 : (colon) separated parts")
-    parts_int = []
-    if any(len(part) != 2 for part in parts):
-        raise cv.Invalid(
-            "Security Key must be format XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX"
-        )
-    for part in parts:
-        try:
-            parts_int.append(int(part, 16))
-        except ValueError:
-            # pylint: disable=raise-missing-from
-            raise cv.Invalid(
-                "Security Key parts must be hexadecimal values from 00 to FF"
-            )
-    return parts_int
 
 
 CONFIG_SCHEMA = (
