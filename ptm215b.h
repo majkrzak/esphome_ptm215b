@@ -21,10 +21,10 @@ class PTM215B : public Component, public esp32_ble_tracker::ESPBTDeviceListener 
   using security_signature_t = array_t<4>;
   using switch_status_t = struct __packed {
     bool press : 1;
-    bool A0 : 1;
-    bool A1 : 1;
-    bool B0 : 1;
-    bool B1 : 1;
+    bool a0 : 1;
+    bool a1 : 1;
+    bool b0 : 1;
+    bool b1 : 1;
   };
   using data_telegram_t = struct __packed {
     sequence_counter_t sequence_counter;
