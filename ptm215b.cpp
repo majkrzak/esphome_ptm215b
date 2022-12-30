@@ -64,7 +64,7 @@ bool PTM215B::parse_device(const esp32_ble_tracker::ESPBTDevice &device) {
       continue;
     }
 
-    ESP_LOGV(TAG, "%s: Received EnOcean Manufacturer Data.", to_string(this->address_).c_str());
+    ESP_LOGV(TAG, "%s: EnOcean Manufacturer Data received.", to_string(this->address_).c_str());
     return this->handle_data(manufacturer_data.data);
   }
 
@@ -81,13 +81,13 @@ bool PTM215B::check_manufacturer(const manufacturer_t &manufacturer) {
 bool PTM215B::handle_data(const data_t &data) {
   auto data_telegram_o = this->parse_data_telegram(data);
   if (data_telegram_o.has_value()) {
-    ESP_LOGV(TAG, "%s: Received Data Telegram.", to_string(this->address_).c_str());
+    ESP_LOGV(TAG, "%s: Data Telegram received.", to_string(this->address_).c_str());
     return this->handle_data_telegram(data_telegram_o.value());
   }
 
   auto commissioning_telegram_o = this->parse_commissioning_telegram(data);
   if (commissioning_telegram_o.has_value()) {
-    ESP_LOGV(TAG, "%s: Received Commissionning Telegram.", to_string(this->address_).c_str());
+    ESP_LOGV(TAG, "%s: Commissionning Telegram received.", to_string(this->address_).c_str());
     return this->handle_commissioning_telegram(commissioning_telegram_o.value());
   }
 
