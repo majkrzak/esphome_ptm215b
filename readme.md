@@ -13,7 +13,7 @@ binary_sensor:
   - platform: ptm215b
     mac_address: 11:11:11:11:11:11
     security_key: 11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11
-    bar:
+    any:
       ...
     a0:
       ...
@@ -44,7 +44,7 @@ esp32_ble_tracker:
 ### Buttons
 
 Component exposes 5 independent binary sensors, 1 for each of A0, A1, B0, B1 buttons and one for the energy bar.
-Combined dependent sensors (like A1 and B1) are not yet implemented.
+Combined dependent sensors (like A1 and B1) are not yet implemented, although implementation is in progress.
 
 
 ### Commissioning

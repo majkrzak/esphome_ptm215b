@@ -15,6 +15,18 @@ class PTM215B : public Component, public esp32_ble_tracker::ESPBTDeviceListener 
   template<int N> using array_t = std::array<uint8_t, N>;
   using address_t = array_t<6>;
   using security_key_t = array_t<16>;
+  using button_predicate_t = struct {
+    optional<bool> a0;
+    optional<bool> a1;
+    optional<bool> b0;
+    optional<bool> b1;
+  };
+  using button_sensor_t = binary_sensor::BinarySensor *;
+  using button_t = struct {
+    button_predicate_t predicate;
+    button_sensor_t sensor;
+  };
+  using buttons_t = std::vector<button_t>;
   using manufacturer_t = esp32_ble_tracker::ESPBTUUID;
   using data_t = std::vector<uint8_t>;
   using sequence_counter_t = uint32_t;
@@ -41,11 +53,9 @@ class PTM215B : public Component, public esp32_ble_tracker::ESPBTDeviceListener 
 
   void set_address(const address_t &&address) { this->address_ = address; }
   void set_key(const security_key_t &&key) { this->security_key_ = key; }
-  void set_bar_sensor(binary_sensor::BinarySensor *sensor) { this->bar_sensor_ = sensor; }
-  void set_a0_sensor(binary_sensor::BinarySensor *sensor) { this->a0_sensor_ = sensor; }
-  void set_a1_sensor(binary_sensor::BinarySensor *sensor) { this->a1_sensor_ = sensor; }
-  void set_b0_sensor(binary_sensor::BinarySensor *sensor) { this->b0_sensor_ = sensor; }
-  void set_b1_sensor(binary_sensor::BinarySensor *sensor) { this->b1_sensor_ = sensor; }
+  void set_button(const button_predicate_t &&predicate, button_sensor_t sensor) {
+    this->buttons_.push_back({predicate, sensor});
+  }
 
   void dump_config();
 
@@ -56,12 +66,7 @@ class PTM215B : public Component, public esp32_ble_tracker::ESPBTDeviceListener 
  protected:
   address_t address_{};
   security_key_t security_key_{};
-
-  binary_sensor::BinarySensor *bar_sensor_{nullptr};
-  binary_sensor::BinarySensor *a0_sensor_{nullptr};
-  binary_sensor::BinarySensor *a1_sensor_{nullptr};
-  binary_sensor::BinarySensor *b0_sensor_{nullptr};
-  binary_sensor::BinarySensor *b1_sensor_{nullptr};
+  buttons_t buttons_{};
 
  private:
   switch_status_t switch_status_{};

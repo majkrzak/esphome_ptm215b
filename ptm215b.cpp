@@ -42,11 +42,9 @@ void PTM215B::dump_config() {
   ESP_LOGCONFIG(TAG, "PTM 215B:");
   ESP_LOGCONFIG(TAG, " Address: %s", to_string(this->address_).c_str());
   ESP_LOGCONFIG(TAG, " Security Key: %s", to_string(this->security_key_).c_str());
-  LOG_BINARY_SENSOR(" ", "Any Button", this->bar_sensor_);
-  LOG_BINARY_SENSOR(" ", "A0 Button", this->a0_sensor_);
-  LOG_BINARY_SENSOR(" ", "A1 Button", this->a1_sensor_);
-  LOG_BINARY_SENSOR(" ", "B0 Button", this->b0_sensor_);
-  LOG_BINARY_SENSOR(" ", "B1 Button", this->b1_sensor_);
+  for (auto &button : this->buttons_) {
+    LOG_BINARY_SENSOR(" ", "Button", button.sensor);
+  }
 }
 
 bool PTM215B::parse_device(const esp32_ble_tracker::ESPBTDevice &device) {
@@ -245,20 +243,21 @@ void PTM215B::update_sequence_counter(const sequence_counter_t &sequence_counter
 void PTM215B::update_switch_status(const switch_status_t &switch_status) { this->switch_status_ = switch_status; }
 
 void PTM215B::notify() {
-  if (this->bar_sensor_) {
-    this->bar_sensor_->publish_state(this->switch_status_.press);
-  }
-  if (this->a0_sensor_) {
-    this->a0_sensor_->publish_state(this->switch_status_.a0);
-  }
-  if (this->a1_sensor_) {
-    this->a1_sensor_->publish_state(this->switch_status_.a1);
-  }
-  if (this->b0_sensor_) {
-    this->b0_sensor_->publish_state(this->switch_status_.b0);
-  }
-  if (this->b1_sensor_) {
-    this->b1_sensor_->publish_state(this->switch_status_.b1);
+  for (auto &button : this->buttons_) {
+    auto state = this->switch_status_.press;
+    if (state and button.predicate.a0.has_value()) {
+      state &= not button.predicate.a0 xor this->switch_status_.a0;
+    }
+    if (state and button.predicate.a1.has_value()) {
+      state &= not button.predicate.a1 xor this->switch_status_.a1;
+    }
+    if (state and button.predicate.b0.has_value()) {
+      state &= not button.predicate.b0 xor this->switch_status_.b0;
+    }
+    if (state and button.predicate.b1.has_value()) {
+      state &= not button.predicate.b1 xor this->switch_status_.b1;
+    }
+    button.sensor->publish_state(state);
   }
 }
 
