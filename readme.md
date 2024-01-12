@@ -55,8 +55,28 @@ esp32_ble_tracker:
 
 ### Buttons
 
-Component exposes 5 independent binary sensors, 1 for each of A0, A1, B0, B1 buttons and one for the energy bar.
-Combined dependent sensors (like A1 and B1) are not yet implemented, although implementation is in progress.
+The component currently exposes 18 independent binary sensors. Available combinations are described in following table.
+
+|            |A 0|A 1|B 0|B 1|
+|:----------:|:-:|:-:|:-:|:-:|
+| `any`      |   |   |   |   |
+| `none`     | 0 | 0 | 0 | 0 |
+| `a0`       | 1 |   |   |   |
+| `a1`       |   | 1 |   |   |
+| `b0`       |   |   | 1 |   |
+| `b1`       |   |   |   | 1 |
+| `a0_only`  | 1 | 0 | 0 | 0 |
+| `a1_only`  | 0 | 1 | 0 | 0 |
+| `b0_only`  | 0 | 0 | 1 | 0 |
+| `b1_only`  | 0 | 0 | 0 | 1 |
+| `ab0`      | 1 |   | 1 |   |
+| `ab1`      |   | 1 |   | 1 |
+| `a01`      | 1 | 1 |   |   |
+| `b01`      |   |   | 1 | 1 |
+| `ab0_only` | 1 |   | 1 |   |
+| `ab1_only` | 0 | 1 | 0 | 1 |
+| `a01_only` | 1 | 1 | 0 | 0 |
+| `b01_only` | 0 | 0 | 1 | 1 |
 
 
 ### Commissioning
