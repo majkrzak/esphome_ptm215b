@@ -5,6 +5,18 @@ EnOcean PTM 215B component for ESPHome
 PTM 215B from EnOcean is a BLE pushbutton transmitter module powered with the energy from the press/release action. This component provides implementation according to [the user manual](https://www.enocean.com/wp-content/uploads/downloads-produkte/en/products/enocean_modules_24ghz_ble/ptm-215b/user-manual-pdf/PTM-215B-User-Manual.pdf).
 
 
+Installation
+------------
+
+This is an external ESPHome component and therefore have to be explicitly installed before use.
+
+```yaml
+external_components:
+  - source: github://majkrzak/esphome_ptm215b
+    components: [ ptm215b ]
+```
+
+
 Configuration
 -------------
 
