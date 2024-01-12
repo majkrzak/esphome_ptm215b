@@ -48,8 +48,7 @@ void PTM215B::dump_config() {
 }
 
 bool PTM215B::parse_device(const esp32_ble_tracker::ESPBTDevice &device) {
-  auto &address = *reinterpret_cast<const address_t *>(device.address());
-  if (!this->check_address(address)) {
+  if (auto &address = *reinterpret_cast<const address_t *>(device.address()); !this->check_address(address)) {
     ESP_LOGV(TAG, "%s: Address %s do not match. Skipping.", to_string(this->address_).c_str(),
              to_string(address).c_str());
     return false;
@@ -77,14 +76,12 @@ bool PTM215B::check_manufacturer(const manufacturer_t &manufacturer) {
 }
 
 bool PTM215B::handle_data(const data_t &data) {
-  auto data_telegram_o = this->parse_data_telegram(data);
-  if (data_telegram_o.has_value()) {
+  if (auto data_telegram_o = this->parse_data_telegram(data); data_telegram_o.has_value()) {
     ESP_LOGV(TAG, "%s: Data Telegram received.", to_string(this->address_).c_str());
     return this->handle_data_telegram(data_telegram_o.value());
   }
 
-  auto commissioning_telegram_o = this->parse_commissioning_telegram(data);
-  if (commissioning_telegram_o.has_value()) {
+  if (auto commissioning_telegram_o = this->parse_commissioning_telegram(data); commissioning_telegram_o.has_value()) {
     ESP_LOGV(TAG, "%s: Commissionning Telegram received.", to_string(this->address_).c_str());
     return this->handle_commissioning_telegram(commissioning_telegram_o.value());
   }
@@ -185,14 +182,14 @@ bool PTM215B::check_signature(const data_telegram_t &data_telegram) {
     return true;
   }
 
-  std::unique_ptr<mbedtls_ccm_context, std::function<void(mbedtls_ccm_context *)>> ctx(([](mbedtls_ccm_context *ctx) {
+  std::unique_ptr<mbedtls_ccm_context, std::function<void(mbedtls_ccm_context *)>> ctx{([](mbedtls_ccm_context *ctx) {
                                                                                          mbedtls_ccm_init(ctx);
                                                                                          return ctx;
                                                                                        })(new mbedtls_ccm_context),
                                                                                        [](mbedtls_ccm_context *ctx) {
                                                                                          mbedtls_ccm_free(ctx);
                                                                                          delete ctx;
-                                                                                       });
+                                                                                       }};
 
   if (mbedtls_ccm_setkey(ctx.get(), MBEDTLS_CIPHER_ID_AES, this->security_key_.data(),
                          this->security_key_.size() * 8)) {
