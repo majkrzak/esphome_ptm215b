@@ -17,10 +17,27 @@ PTM215B = ptm215b_ns.class_(
 
 BUTTONS = {
     "any": (None, None, None, None),
+    "none": (False, False, False, False),
+    # Independent
     "a0": (True, None, None, None),
     "a1": (None, True, None, None),
     "b0": (None, None, True, None),
     "b1": (None, None, None, True),
+    # Dependent
+    "a0_only": (True, False, False, False),
+    "a1_only": (False, True, False, False),
+    "b0_only": (False, False, True, False),
+    "b1_only": (False, False, False, True),
+    # Double Independent
+    "ab0": (True, None, True, None),
+    "ab1": (None, True, None, True),
+    "a01": (True, True, None, None),
+    "b01": (None, None, True, True),
+    # Double Dependent
+    "ab0_only": (True, False, True, False),
+    "ab1_only": (False, True, False, True),
+    "a01_only": (True, True, False, False),
+    "b01_only": (False, False, True, True),
 }
 
 CONFIG_SCHEMA = (
